@@ -16,6 +16,10 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
+
+/**
+ * gcc -DXP_UNIX -D_LARGEFILE64_SOURCE -I../mozilla/js/src -I../mozilla/js/src/Linux_All_OPT.OBJ/  -I../apache/include/ -o mod_js.a  src/*.o -ljs -L../mozilla/js/src/Linux_All_OPT.OBJ/ --shared
+ */
 #include "httpd.h"
 #include "http_config.h"
 #include "http_protocol.h"
@@ -23,8 +27,8 @@
 
 #include <stdio.h>
 
-#include "js_runtime.h";
-#include "js_cgi.h";
+#include "js_runtime.h"
+#include "js_cgi.h"
 
 static int js_handler(request_rec *r)
 {
@@ -33,20 +37,22 @@ static int js_handler(request_rec *r)
     modjsContext* mjs;
 
     /* things going IN */
-    table *env; /* will store the apache environment */
-    array_header *arr;
-    table_entry *elts;
+    const apr_array_header_t *arr;
+    const apr_table_entry_t *elts;
     char *request_content; /* the full request sent to the server */
 
     /* things coming OUT */
     jsval rval;
+
+    if (!r->handler ||  strcmp(r->handler, "js_script"))
+        return DECLINED;
 
     /* create new context */
     mjs = new_context( NULL );
     if (mjs == NULL) {
         /* TODO - return 500 */
         fprintf(stderr, "Unable to create JS context!\n");
-        return SERVER_ERROR;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
     
     mjs->request = r;
@@ -74,9 +80,8 @@ static int js_handler(request_rec *r)
     ap_add_cgi_vars(r);
 
     /* extract the CGI environment */
-    env = r->subprocess_env;
-    arr = ap_table_elts(env);
-    elts = (table_entry *)arr->elts;
+    arr = apr_table_elts(r->subprocess_env);
+    elts = (const apr_table_entry_t*)arr->elts;
 
     JSObject *request = JS_DefineObject( mjs->ctx,
       JS_GetGlobalObject( mjs->ctx ), "request", NULL, NULL, JSPROP_ENUMERATE );
@@ -95,7 +100,6 @@ static int js_handler(request_rec *r)
     /* set apache headers */
     /* TODO - let the script do this. */
     r->content_type = "text/html";
-    ap_send_http_header(r);
 
     if (js_eval_file( mjs, r->filename, &rval ) == JS_FALSE) {
         char * content;
@@ -116,23 +120,32 @@ static int js_handler(request_rec *r)
     return OK;
 }
 
-
-
-
-
-
-
-
-
 /****************************************************************
  * apache stuff
  ****************************************************************/
 
+#ifndef APACHE_1_3
+static void mod_js_register_hooks(apr_pool_t *p ) {
+    ap_hook_handler(js_handler, NULL, NULL, APR_HOOK_LAST);
+}
+
+module AP_MODULE_DECLARE_DATA js_module = {
+    STANDARD20_MODULE_STUFF,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    mod_js_register_hooks,
+};
+
+#else
 /* Dispatch list of content handlers */
 static const handler_rec js_handlers[] = { 
     { "js-script", js_handler }, 
     { NULL, NULL }
 };
+
 
 /* Dispatch list for API hooks */
 module MODULE_VAR_EXPORT js_module = {
@@ -162,4 +175,4 @@ module MODULE_VAR_EXPORT js_module = {
     NULL                   /* EAPI: new_connection                */
 #endif
 };
-
+#endif

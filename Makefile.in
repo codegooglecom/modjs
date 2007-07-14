@@ -1,0 +1,39 @@
+@SET_MAKE@
+LIBEXECDIR=@LIBEXECDIR@
+INSTALL=@INSTALL@
+
+all: @ALL@
+
+dso: @DSO@
+
+do_dso:
+	$(MAKE) -C src
+
+no_dso:
+	@echo
+	@echo "DSO compilation not available. (Probably because apxs could not be found)."
+	@echo
+
+static: @STATIC@
+
+no_static:
+	@echo
+	@echo "Static compilation not available. (Probably because --with-apache was not specified)."
+	@echo
+
+clean:
+	$(MAKE) -C src clean
+
+install: src/.install
+	@echo
+	@echo "Performing DSO installation."
+	@echo
+	$(INSTALL) -d $(DESTDIR)$(LIBEXECDIR)
+	$(INSTALL) src/mod_js.so $(DESTDIR)$(LIBEXECDIR)
+	@echo
+	@echo "Now don't forget to edit your main config and add"
+	@echo "    LoadModule js_module $(LIBEXECDIR)/mod_js.so"
+	@echo "and if your configuration uses ClearModuleList, then also"
+	@echo "    AddModule mod_js.c"
+	@echo
+

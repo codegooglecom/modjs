@@ -84,8 +84,8 @@ modjsContext* new_context(JSRuntime* rt) {
   }
   
   //TODO: Make this hookable!
-  extern JSObject* js_InitSQLiteClass(JSContext *ctx, JSObject *obj);
-  js_InitSQLiteClass(ctx->ctx, obj);
+  //extern JSObject* js_InitSQLiteClass(JSContext *ctx, JSObject *obj);
+  //js_InitSQLiteClass(ctx->ctx, obj);
 
   // Store our structure in the ctx so we can go back and forth as needed
   JS_SetContextPrivate(ctx->ctx, (void*) ctx);

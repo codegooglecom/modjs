@@ -24,10 +24,8 @@
 
 #include <stdio.h>
 
-#include "js_runtime.h";
-
-
-#include "js_cgi.h";
+#include "js_runtime.h"
+#include "js_cgi.h"
 
 
 JSBool cgi_print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *rval) {
@@ -61,3 +59,4 @@ void js_import_functions( modjsContext *mjs ) {
     js_define_function( mjs, "print", cgi_print );
     js_define_function( mjs, "include", cgi_include );
 }
+

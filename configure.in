@@ -1,0 +1,125 @@
+
+# check that this file exists - i.e. we are in the right place
+AC_INIT(src/mod_js.c)
+
+INCLUDES="-I`pwd`/src"
+
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_MAKE_SET
+
+AC_CHECKING(wether apxs is available)
+AC_SUBST(APXS)
+AC_SUBST(DSO)
+AC_SUBST(ALL)
+
+AC_MSG_CHECKING(for --with-apxs)
+AC_ARG_WITH(apxs, [--with-apxs=PATH    Path to apxs],
+[
+    if test -x "$withval"
+    then
+      AC_MSG_RESULT([$withval executable, good])
+      APXS=$withval
+    else
+      echo
+      AC_MSG_ERROR([$withval not found or not executable])
+    fi
+],
+AC_MSG_RESULT(no))
+
+# if apxs was not found, then no DSO
+AC_SUBST(LIBEXECDIR)
+AC_SUBST(HTTPD)
+if test -z "$APXS"; then
+  AC_MSG_WARN([**** apxs was not found, DSO compilation will not be available.])
+  AC_MSG_WARN([**** You can use --with-apxs to specify where your apxs is.])
+  DSO="no_dso"
+  ALL="static"
+else
+  DSO="do_dso"
+  ALL="dso"
+
+  # check Apache version
+  AC_MSG_CHECKING(Apache version)
+  HTTPD="`${APXS} -q SBINDIR`/`${APXS} -q TARGET`"
+  ver=`$HTTPD -v | awk '/version/ {print $3}' | awk -F/ '{print $2}'`
+  AC_MSG_RESULT($ver)
+
+  # make sure version begins with 2
+  if test -z "`echo $ver | egrep \^2`"; then
+    AC_MSG_ERROR([This version of mod_python only works with Apache 2. The one you have seems to be $ver.])
+  fi
+
+  # determine LIBEXEC
+  AC_MSG_CHECKING(for Apache libexec directory)
+  LIBEXECDIR=`${APXS} -q LIBEXECDIR`
+  AC_MSG_RESULT($LIBEXECDIR)
+
+  # determine INCLUDES
+  AC_MSG_CHECKING([for Apache include directory])
+  AP_INCLUDES="-I`${APXS} -q INCLUDEDIR`"
+  AC_MSG_RESULT($AP_INCLUDES)
+fi
+
+AC_SUBST(STATIC)
+if test -z "$AP_SRC"; then
+##  AC_MSG_WARN([**** No apache sources specified, static compilation will not be available.])
+##  AC_MSG_WARN([**** You can use --with-apache to specify where your Apache sources are.])
+  STATIC="no_static"
+else
+  STATIC="do_static"
+fi
+
+if test "$STATIC" = "no_static" -a "$DSO" = "no_dso"; then
+  AC_MSG_ERROR([Neither static nor DSO option available, there is no point in continuing.])
+fi
+
+AC_SUBST(JS_DIR)
+AC_SUBST(JS_OBJS)
+UNAME=`uname`
+AC_MSG_CHECKING(for --with-js)
+AC_ARG_WITH(js, [--with-js=PATH Path to spidermonkey source tree],
+[
+  if test -x "${withval}/${UNAME}_All_OPT.OBJ/js"
+  then
+    AC_MSG_RESULT([$withval good - found optimized js])
+    JS_DIR=$withval
+    JS_OBJS=$withval/${UNAME}_All_OPT.OBJ
+  else if test -x "$withval/${UNAME}_All_DBG.OBJ/js"
+    then
+      AC_MSG_RESULT([$withval good - found debug js])
+      JS_DIR=$withval
+      JS_OBJS=$withval/${UNAME}_All_DBG.OBJ
+    else  
+      AC_MSG_ERROR([$withval not found or doesn't look like a spidermonkey tree])
+    fi
+  fi
+],
+AC_MSG_ERROR(You must specify the --with-js option))
+
+AC_MSG_CHECKING(Spidermonkey version)
+JSVERSION=`$JS_OBJS/js --help 2>&1 | awk '/^JavaScript-C/ {print $0}'`
+AC_MSG_RESULT($JSVERSION)
+
+LDFLAGS="${LDFLAGS} -L${JS_OBJS}"
+LIBS="${LIBS} ${JS_OBJS}/libjs.so"
+
+AC_SUBST(LDFLAGS)
+AC_MSG_CHECKING(where JS include files are)
+AC_SUBST(INCLUDES)
+JS_INCLUDES="-I${JS_OBJS} -I${JS_DIR}"
+INCLUDES="${INCLUDES} ${AP_INCLUDES} ${JS_INCLUDES}"
+AC_MSG_RESULT($JS_INCLUDES)
+
+# Spider monkey needs one of XP_BEOS, XP_OS2, XP_WIN or XP_UNIX to be defined
+# This needs to be smarter
+AC_SUBST(JS_XP)
+if test "$UNAME" == ""; then
+  JS_XP="XP_WIN"
+else
+  JS_XP="XP_UNIX"
+fi
+    
+
+
+AC_OUTPUT(Makefile src/Makefile)

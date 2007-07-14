@@ -1,0 +1,29 @@
+CC=@CC@
+AR=@AR@
+APXS=@APXS@
+MKDEP=@MKDEP@
+
+INCLUDES=@INCLUDES@
+LIBS=@LIBS@
+LDFLAGS=@LDFLAGS@
+OPT=-D@JS_XP@
+CFLAGS=$(OPT) $(INCLUDES)
+srcdir=.
+
+SRCS=  mod_js.c js_runtime.c js_cgi.c
+
+all: @ALL@
+
+dso:  mod_js.so
+	@echo dso > .install
+
+mod_js.so : $(SRCS)
+	@echo
+	@echo 'Compiling for DSO.'
+	@echo
+	$(APXS) $(CFLAGS) -c $(SRCS) $(LDFLAGS) $(LIBS)
+	@rm -f mod_js.so
+	@ln -s .libs/mod_js.so mod_js.so
+
+clean:
+	rm -rf $(OBJS) core libjs.a mod_js.so *~ .libs *.o *.slo *.lo *.la 
