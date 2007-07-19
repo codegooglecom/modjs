@@ -25,6 +25,7 @@
 #include "util_script.h"
 
 
+#define MOD_JS_VERSION "0.1"
 
 #include "jsapi.h"
 

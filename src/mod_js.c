@@ -17,9 +17,6 @@
 
 */
 
-/**
- * gcc -DXP_UNIX -D_LARGEFILE64_SOURCE -I../mozilla/js/src -I../mozilla/js/src/Linux_All_OPT.OBJ/  -I../apache/include/ -o mod_js.a  src/*.o -ljs -L../mozilla/js/src/Linux_All_OPT.OBJ/ --shared
- */
 #include "httpd.h"
 #include "http_config.h"
 #include "http_protocol.h"
@@ -30,7 +27,18 @@
 #include "js_runtime.h"
 #include "js_cgi.h"
 
-static int js_handler(request_rec *r)
+static int mod_js_init_handler(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
+{
+    ap_add_version_component(p, "mod_js/" MOD_JS_VERSION );
+    return OK;
+}
+
+static int mod_js_child_init(apr_pool_t *p, server_rec *s)
+{
+    return OK;
+}
+
+static int mod_js_handler(request_rec *r)
 {
     int i;
 
@@ -124,9 +132,10 @@ static int js_handler(request_rec *r)
  * apache stuff
  ****************************************************************/
 
-#ifndef APACHE_1_3
 static void mod_js_register_hooks(apr_pool_t *p ) {
-    ap_hook_handler(js_handler, NULL, NULL, APR_HOOK_LAST);
+    ap_hook_handler(mod_js_handler, NULL, NULL, APR_HOOK_MIDDLE);
+    ap_hook_post_config(mod_js_init_handler, NULL, NULL, APR_HOOK_MIDDLE);
+    ap_hook_child_init(mod_js_child_init, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
 module AP_MODULE_DECLARE_DATA js_module = {
@@ -138,41 +147,3 @@ module AP_MODULE_DECLARE_DATA js_module = {
     NULL,
     mod_js_register_hooks,
 };
-
-#else
-/* Dispatch list of content handlers */
-static const handler_rec js_handlers[] = { 
-    { "js-script", js_handler }, 
-    { NULL, NULL }
-};
-
-
-/* Dispatch list for API hooks */
-module MODULE_VAR_EXPORT js_module = {
-    STANDARD_MODULE_STUFF, 
-    NULL,                  /* module initializer                  */
-    NULL,                  /* create per-dir    config structures */
-    NULL,                  /* merge  per-dir    config structures */
-    NULL,                  /* create per-server config structures */
-    NULL,                  /* merge  per-server config structures */
-    NULL,                  /* table of config file commands       */
-    js_handlers,           /* [#8] MIME-typed-dispatched handlers */
-    NULL,                  /* [#1] URI to filename translation    */
-    NULL,                  /* [#4] validate user id from request  */
-    NULL,                  /* [#5] check if the user is ok _here_ */
-    NULL,                  /* [#3] check access by host address   */
-    NULL,                  /* [#6] determine MIME type            */
-    NULL,                  /* [#7] pre-run fixups                 */
-    NULL,                  /* [#9] log a transaction              */
-    NULL,                  /* [#2] header parser                  */
-    NULL,                  /* child_init                          */
-    NULL,                  /* child_exit                          */
-    NULL                   /* [#0] post read-request              */
-#ifdef EAPI
-   ,NULL,                  /* EAPI: add_module                    */
-    NULL,                  /* EAPI: remove_module                 */
-    NULL,                  /* EAPI: rewrite_command               */
-    NULL                   /* EAPI: new_connection                */
-#endif
-};
-#endif
