@@ -80,19 +80,23 @@ UNAME=`uname`
 AC_MSG_CHECKING(for --with-js)
 AC_ARG_WITH(js, [--with-js=PATH Path to spidermonkey source tree],
 [
-  if test -x "${withval}/${UNAME}_All_OPT.OBJ/js"
-  then
-    AC_MSG_RESULT([$withval good - found optimized js])
-    JS_DIR=$withval
-    JS_OBJS=$withval/${UNAME}_All_OPT.OBJ
-  else if test -x "$withval/${UNAME}_All_DBG.OBJ/js"
+  for dir in ${withval}/${UNAME}*.OBJ
+  do
+    if test -x "${dir}/js"
     then
-      AC_MSG_RESULT([$withval good - found debug js])
+      build_type=${dir%.OBJ/}
+      build_type=${build_type##*_}
+      [[ "$build_type" == "OPT" ]] && build_type="optimized" || build_type="debug"
+      AC_MSG_RESULT([$withval good - found $build_type js])
       JS_DIR=$withval
-      JS_OBJS=$withval/${UNAME}_All_DBG.OBJ
-    else  
-      AC_MSG_ERROR([$withval not found or doesn't look like a spidermonkey tree])
+      JS_OBJS=$dir
+      break
     fi
+  done
+
+  if test -z "$JS_DIR"
+  then
+    AC_MSG_ERROR([$withval not found or doesn't look like a spidermonkey tree])
   fi
 ],
 AC_MSG_ERROR(You must specify the --with-js option))
