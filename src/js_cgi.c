@@ -1,11 +1,12 @@
 /**
     mod_js - Apache module to run serverside Javascript
-    Copyright (C) 2007, Ash Berlin & Tom Insam
+    Copyright (C) 2007-2009, Ash Berlin & Tom Insam
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    (at your option) any later version of the GPL or the Apache License,
+    Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
