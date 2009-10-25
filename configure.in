@@ -1,4 +1,3 @@
-
 # check that this file exists - i.e. we are in the right place
 AC_INIT(src/mod_js.c)
 
@@ -74,56 +73,32 @@ if test "$STATIC" = "no_static" -a "$DSO" = "no_dso"; then
   AC_MSG_ERROR([Neither static nor DSO option available, there is no point in continuing.])
 fi
 
-AC_SUBST(JS_DIR)
-AC_SUBST(JS_OBJS)
+AC_SUBST(GPSEE_CONFIG)
+AC_SUBST(GPSEE_MK)
 UNAME=`uname`
-AC_MSG_CHECKING(for --with-js)
-AC_ARG_WITH(js, [--with-js=PATH Path to spidermonkey source tree],
+AC_MSG_CHECKING(for --with-gpsee)
+AC_ARG_WITH(gpsee, [--with-gpsee=PATH Path to GPSEE],
 [
-  for dir in ${withval}/${UNAME}*.OBJ
-  do
-    if test -x "${dir}/js"
-    then
-      build_type=${dir%.OBJ/}
-      build_type=${build_type##*_}
-      [[ "$build_type" == "OPT" ]] && build_type="optimized" || build_type="debug"
-      AC_MSG_RESULT([$withval good - found $build_type js])
-      JS_DIR=$withval
-      JS_OBJS=$dir
-      break
-    fi
-  done
-
-  if test -z "$JS_DIR"
-  then
-    AC_MSG_ERROR([$withval not found or doesn't look like a spidermonkey tree])
+  if test -x "${withval}/bin/gpsee-config"; then
+    GPSEE_CONFIG="$withval/bin/gpsee-config"
+    GPSEE_MK="`$GPSEE_CONFIG --outside.mk`"
+    GPSEE_DIR="`$GPSEE_CONFIG --prefix`"
+    AC_MSG_RESULT([$withval good - found gpsee-config as $GPSEE_CONFIG])
+  else
+    AC_MSG_ERROR(${withval}/bin/gpsee-config not found)
   fi
 ],
-AC_MSG_ERROR(You must specify the --with-js option))
+AC_MSG_ERROR(You must specify the --with-gpsee option))
 
-AC_MSG_CHECKING(Spidermonkey version)
-JSVERSION=`$JS_OBJS/js --help 2>&1 | awk '/^JavaScript-C/ {print $0}'`
-AC_MSG_RESULT($JSVERSION)
+AC_MSG_CHECKING(GPSEE version)
+GPSEE_VERSION=`$GPSEE_CONFIG --version`
+AC_MSG_RESULT($GPSEE_VERSION)
 
 LDFLAGS="${LDFLAGS} -L${JS_OBJS}"
 LIBS="${LIBS} ${JS_OBJS}/libjs.so"
 
 AC_SUBST(LDFLAGS)
-AC_MSG_CHECKING(where JS include files are)
 AC_SUBST(INCLUDES)
-JS_INCLUDES="-I${JS_OBJS} -I${JS_DIR}"
-INCLUDES="${INCLUDES} ${AP_INCLUDES} ${JS_INCLUDES}"
-AC_MSG_RESULT($JS_INCLUDES)
-
-# Spider monkey needs one of XP_BEOS, XP_OS2, XP_WIN or XP_UNIX to be defined
-# This needs to be smarter
-AC_SUBST(JS_XP)
-if test "$UNAME" == ""; then
-  JS_XP="XP_WIN"
-else
-  JS_XP="XP_UNIX"
-fi
-    
-
+INCLUDES="${INCLUDES} ${AP_INCLUDES}"
 
 AC_OUTPUT(Makefile src/Makefile)

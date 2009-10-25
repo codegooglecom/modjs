@@ -1,12 +1,11 @@
 /**
     mod_js - Apache module to run serverside Javascript
-    Copyright (C) 2007-2009, Ash Berlin & Tom Insam
+    Copyright (C) 2007, Ash Berlin & Tom Insam
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version of the GPL or the Apache License,
-    Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>.
+    (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,7 +17,6 @@
 
 */
 
-#include "jsapi.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -38,21 +36,7 @@ void debug(char * fmt, ...) {
     va_end(ap);
 }
 
-static JSRuntime* init_runtime() {
-  JSRuntime* runtime;
-  runtime = JS_NewRuntime( 1024 * 1024 );
-  return runtime;
-}
-
-/* Global class, does nothing */
-static JSClass global_class = {
-    "global", 0,
-    JS_PropertyStub,  JS_PropertyStub,  JS_PropertyStub,  JS_PropertyStub,
-    JS_EnumerateStub, JS_ResolveStub,   JS_ConvertStub,   JS_FinalizeStub,
-    JSCLASS_NO_OPTIONAL_MEMBERS
-};
-
-modjsContext* new_context(JSRuntime* rt) {
+modjsContext* new_context(gpsee_interpreter_t *jsi) {
   modjsContext *ctx;
   JSObject* obj;
 
@@ -62,34 +46,25 @@ modjsContext* new_context(JSRuntime* rt) {
     abort();
   }
 
-  if (rt == NULL) {
-    ctx->rt = init_runtime();
+  if (jsi == NULL) {
+    ctx->jsi = gpsee_createInterpreter(NULL, NULL);
   } else {
-    ctx->rt = rt;
+    ctx->jsi = jsi;
   }
   
-  ctx->ctx = JS_NewContext(ctx->rt, 8192);
-  if (ctx->ctx == NULL) {
+  if (ctx->jsi == NULL || ctx->jsi->cx == NULL) {
     fprintf(stderr, "Unable to create JS context!");
     return NULL;
   }
 
-  JS_SetVersion(ctx->ctx, JSVERSION_1_7);
-  JS_SetOptions(ctx->ctx, JSOPTION_DONT_REPORT_UNCAUGHT);
+  gpsee_verbosity(2);
 
-  obj = JS_NewObject(ctx->ctx, &global_class, NULL, NULL);
-  if (JS_InitStandardClasses(ctx->ctx, obj) == JS_FALSE) {
-    debug("failed to initialize standard classes\n");
-    free_context(ctx);
-    return NULL;
-  }
-  
   //TODO: Make this hookable!
   //extern JSObject* js_InitSQLiteClass(JSContext *ctx, JSObject *obj);
   //js_InitSQLiteClass(ctx->ctx, obj);
 
   // Store our structure in the ctx so we can go back and forth as needed
-  JS_SetContextPrivate(ctx->ctx, (void*) ctx);
+  JS_SetContextPrivate(ctx->jsi->cx, (void*) ctx);
 
   return ctx;
 }
@@ -97,14 +72,13 @@ modjsContext* new_context(JSRuntime* rt) {
 void free_context(modjsContext* ctx) {
   // TODO: Do we need to keep track of any bound functions? Probally
 
-  JS_DestroyContext(ctx->ctx);
+  gpsee_destroyInterpreter(ctx->jsi);
 
   free(ctx);
 }
 
 JSBool js_eval(modjsContext *ctx, const char * source, const char * name, jsval *rval) {
-  JSObject *gobj = JS_GetGlobalObject(ctx->ctx);
-  return JS_EvaluateScript(ctx->ctx, gobj, source, strlen(source), name, 1, rval);
+  return JS_EvaluateScript(ctx->jsi->cx, ctx->jsi->globalObj, source, strlen(source), name, 1, rval);
 }
 
 JSBool set_exception(modjsContext *ctx, char *fmt, ...) {
@@ -113,9 +87,9 @@ JSBool set_exception(modjsContext *ctx, char *fmt, ...) {
     va_start(ap, fmt);
     vasprintf(&string, fmt, ap);
     va_end(ap);
-    jsval j = STRING_TO_JSVAL( JS_NewStringCopyN( ctx->ctx, string, strlen( string ) ) );
+    jsval j = STRING_TO_JSVAL( JS_NewStringCopyN( ctx->jsi->cx, string, strlen( string ) ) );
     free(string);
-    JS_SetPendingException( ctx->ctx, j );
+    JS_SetPendingException( ctx->jsi->cx, j );
     return JS_FALSE;
 }
 
@@ -160,26 +134,31 @@ JSBool js_eval_file(modjsContext *ctx, const char* name, jsval* rval) {
 
 void js_get_exception(modjsContext *ctx, jsval *rval) {
 
-  if (JS_IsExceptionPending( ctx->ctx ) == JS_FALSE) {
+  if (JS_IsExceptionPending( ctx->jsi->cx ) == JS_FALSE) {
     debug("no exception pending!\n");
     *rval = JSVAL_NULL;
   }
   
-  JS_GetPendingException(ctx->ctx, rval);
-  JS_ClearPendingException(ctx->ctx);
+  JS_GetPendingException(ctx->jsi->cx, rval);
+  JS_ClearPendingException(ctx->jsi->cx);
 }
 
 
 /* Converts a JavaScript value to a string. CALLER MUST FREE STRING */
-void js_val_to_string(JSContext *ctx, jsval v, char** string) {
+int js_val_to_string(JSContext *ctx, jsval v, char** string) {
     JSString *str = JS_ValueToString( ctx, v );
-    *string = (char*)JS_smprintf("%hs", JS_GetStringChars(str));
+    if (str)
+      *string = (char*)JS_smprintf("%hs", JS_GetStringChars(str));
+    else
+      return 1;
+
+    return 0;
 }
 
 
 
 void js_define_function(modjsContext *ctx, const char *name, JSNative call) {
-    if (JS_DefineFunction(ctx->ctx, JS_GetGlobalObject(ctx->ctx), name, call, 0, 0) == JS_FALSE) {
+    if (JS_DefineFunction(ctx->jsi->cx, ctx->jsi->globalObj, name, call, 0, 0) == JS_FALSE) {
         debug("Failed to define function");
     }
 }

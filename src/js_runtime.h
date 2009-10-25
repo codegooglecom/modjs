@@ -1,12 +1,11 @@
 /**
     mod_js - Apache module to run serverside Javascript
-    Copyright (C) 2007-2009, Ash Berlin & Tom Insam
+    Copyright (C) 2007, Ash Berlin & Tom Insam
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version of the GPL or the Apache License,
-    Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>.
+    (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -26,22 +25,22 @@
 #include "util_script.h"
 
 
-#define MOD_JS_VERSION "0.1"
+#define MOD_JS_VERSION "0.2"
 
-#include "jsapi.h"
+#define GPSEE_JSAPI_PROGRAM
+#include <gpsee-jsapi.h>
 
 typedef struct modjsContext {
-  JSRuntime *rt;
-  JSContext *ctx;
+  gpsee_interpreter_t *jsi;
   request_rec *request;
 } modjsContext;
 
-modjsContext*  new_context(JSRuntime* rt);
+modjsContext*  new_context(gpsee_interpreter_t *jsi);
 void           free_context(modjsContext* ctx);
 JSBool         js_eval(modjsContext *ctx, const char* source, const char* name, jsval*);
 JSBool         js_eval_file(modjsContext *ctx, const char *name, jsval*);
 void           js_get_exception(modjsContext *ctx, jsval*);
-void           js_val_to_string(JSContext *ctx, jsval v, char** string);
+int            js_val_to_string(JSContext *ctx, jsval v, char** string);
 
 
 #endif

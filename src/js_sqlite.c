@@ -1,12 +1,11 @@
 /**
     mod_js - Apache module to run serverside Javascript
-    Copyright (C) 2007-2009, Ash Berlin & Tom Insam
+    Copyright (C) 2007, Ash Berlin & Tom Insam
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version of the GPL or the Apache License,
-    Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>.
+    (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -55,7 +54,9 @@ static JSBool SQLite(JSContext *ctx, JSObject *obj, uintN argc, jsval *argv, jsv
     int ret;
 
     
-    js_val_to_string(ctx, argv[0], &dbname);
+    if (js_val_to_string(ctx, argv[0], &dbname) != 0)
+      return JS_FALSE;
+
     ret = sqlite3_open(dbname, &db);
    
     if (ret != SQLITE_OK) {
@@ -85,7 +86,8 @@ static  JSBool js_sqlite_exec(JSContext *ctx, JSObject *obj, uintN argc, jsval *
     
     db = (sqlite3*)JS_GetPrivate(ctx, obj);
     
-    js_val_to_string(ctx, argv[0], &sql);
+    if (js_val_to_string(ctx, argv[0], &sql) != 0)
+      return JS_FALSE;
     
     debug("Execing sql: %s\n", sql);
     fflush(stderr);

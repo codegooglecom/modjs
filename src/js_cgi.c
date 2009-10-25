@@ -1,12 +1,11 @@
 /**
     mod_js - Apache module to run serverside Javascript
-    Copyright (C) 2007-2009, Ash Berlin & Tom Insam
+    Copyright (C) 2007, Ash Berlin & Tom Insam
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version of the GPL or the Apache License,
-    Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>.
+    (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -33,10 +32,11 @@ JSBool cgi_print(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval *r
     modjsContext *mjs = (modjsContext*)JS_GetContextPrivate(cx);
     if (argc > 0) {
         char *string;
-        js_val_to_string( cx, argv[0], &string );
-        ap_rprintf(mjs->request, "%s", string);
-        free(string);
-        return JS_TRUE;
+        if (js_val_to_string( cx, argv[0], &string ) == 0) {
+	  ap_rprintf(mjs->request, "%s", string);
+	  free(string);
+	  return JS_TRUE;
+	}
     }
     return JS_FALSE;
 }
@@ -45,10 +45,11 @@ JSBool cgi_include(JSContext *cx, JSObject *obj, uintN argc, jsval *argv, jsval 
     modjsContext *mjs = (modjsContext*)JS_GetContextPrivate(cx);
     if (argc > 0) {
         char *string;
-        js_val_to_string( cx, argv[0], &string );
-        JSBool ok = js_eval_file( mjs, string, rval );
-        free(string);
-        return ok;
+        if (js_val_to_string( cx, argv[0], &string ) == 0) {
+	  JSBool ok = js_eval_file( mjs, string, rval );
+	  free(string);
+	  return ok;
+	}
     }
     return JS_FALSE;
 }

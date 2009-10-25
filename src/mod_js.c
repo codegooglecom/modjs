@@ -1,12 +1,11 @@
 /**
     mod_js - Apache module to run serverside Javascript
-    Copyright (C) 2007-2009, Ash Berlin & Tom Insam
+    Copyright (C) 2007, Ash Berlin & Tom Insam
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version of the GPL or the Apache License,
-    Version 2.0 <http://www.apache.org/licenses/LICENSE-2.0>.
+    (at your option) any later version.
 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -92,19 +91,19 @@ static int mod_js_handler(request_rec *r)
     arr = apr_table_elts(r->subprocess_env);
     elts = (const apr_table_entry_t*)arr->elts;
 
-    JSObject *request = JS_DefineObject( mjs->ctx,
-      JS_GetGlobalObject( mjs->ctx ), "request", NULL, NULL, JSPROP_ENUMERATE );
+    JSObject *request = JS_DefineObject( mjs->jsi->cx, mjs->jsi->globalObj,
+      "request", NULL, NULL, JSPROP_ENUMERATE );
 
-    JSObject *environment = JS_DefineObject( mjs->ctx, request, "env", NULL, NULL, JSPROP_ENUMERATE );
+    JSObject *environment = JS_DefineObject( mjs->jsi->cx, request, "env", NULL, NULL, JSPROP_ENUMERATE );
 
     for (i = 0; i < arr->nelts; ++i) {
         if (!elts[i].key || !elts[i].val) continue;
-        jsval val = STRING_TO_JSVAL( JS_NewStringCopyN( mjs->ctx, elts[i].val, strlen( elts[i].val ) ) );
-        JS_DefineProperty( mjs->ctx, environment, elts[i].key, val, NULL, NULL, JSPROP_ENUMERATE );
+        jsval val = STRING_TO_JSVAL( JS_NewStringCopyN( mjs->jsi->cx, elts[i].val, strlen( elts[i].val ) ) );
+        JS_DefineProperty( mjs->jsi->cx, environment, elts[i].key, val, NULL, NULL, JSPROP_ENUMERATE );
     }
 
-    jsval post_data = STRING_TO_JSVAL( JS_NewStringCopyN( mjs->ctx, request_content, strlen( request_content ) ) );
-    JS_DefineProperty( mjs->ctx, request, "post_data", post_data, NULL, NULL, JSPROP_ENUMERATE );
+    jsval post_data = STRING_TO_JSVAL( JS_NewStringCopyN( mjs->jsi->cx, request_content, strlen( request_content ) ) );
+    JS_DefineProperty( mjs->jsi->cx, request, "post_data", post_data, NULL, NULL, JSPROP_ENUMERATE );
 
     /* set apache headers */
     /* TODO - let the script do this. */
@@ -113,11 +112,12 @@ static int mod_js_handler(request_rec *r)
     if (js_eval_file( mjs, r->filename, &rval ) == JS_FALSE) {
         char * content;
         js_get_exception( mjs, &rval );
-        js_val_to_string( mjs->ctx, rval, &content );
-        /* TODO - send this as error */
-        if (!r->header_only)
+        if (js_val_to_string( mjs->jsi->cx, rval, &content ) == 0) {
+	  /* TODO - send this as error */
+	  if (!r->header_only)
             ap_rprintf(r, "%s", content );
-        free(content);
+	  free(content);
+	}
     }
 
     /* done with JS context now. */

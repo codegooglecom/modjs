@@ -5,9 +5,8 @@ MKDEP=@MKDEP@
 
 INCLUDES=@INCLUDES@
 LIBS=@LIBS@
-LDFLAGS=@LDFLAGS@
-OPT=-D@JS_XP@
-CFLAGS=$(OPT) $(INCLUDES)
+LDFLAGS=@LDFLAGS@ $(shell @GPSEE_CONFIG@ --ldflags)
+CFLAGS=$(INCLUDES) $(shell @GPSEE_CONFIG@ --cppflags)
 srcdir=.
 
 SRCS=  mod_js.c js_runtime.c js_cgi.c
